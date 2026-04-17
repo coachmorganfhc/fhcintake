@@ -1459,32 +1459,25 @@ function showQR() {
   const name = document.getElementById('o-name').textContent || 'Member';
   document.getElementById('qr-member-name').textContent = name;
 
-  // Store full report HTML in sessionStorage then QR points to /report page
-  // Since we're on GitHub Pages, encode a compact summary URL instead
-  // The QR opens the portal at a special #report hash with member name param
-  const reportData = {
-    n: name,
-    loc: document.getElementById('o-loc').textContent,
-    goals: document.getElementById('o-goals').textContent.substring(0,120),
-    learn: document.getElementById('o-learn-title').textContent,
-    checkin: document.getElementById('o-ci-date').textContent
-  };
+  const loc = document.getElementById('o-loc').textContent || '';
+  const goals = (document.getElementById('o-goals').textContent || '').substring(0, 100);
+  const learn = document.getElementById('o-learn-title').textContent || '';
+  const checkin = document.getElementById('o-ci-date').textContent || '';
 
-  // Build a simple vCard-style text QR that shows key info on phone
-  const qrText = [
+  const lines = [
     'FUNCTION HEALTH CLUB',
-    'Member Assessment Summary',
-    '─────────────────────',
-    'Name: ' + reportData.n,
-    'Location: ' + reportData.loc,
-    'Goal: ' + reportData.goals,
-    'Coaching Style: ' + reportData.learn,
-    '30-Day Check-In: ' + reportData.checkin,
-    '─────────────────────',
-    'Full report saved with your coach.',
+    'Assessment Summary',
+    '--------------------',
+    'Name: ' + name,
+    'Location: ' + loc,
+    'Goal: ' + goals,
+    'Coaching: ' + learn,
+    'Check-In: ' + checkin,
+    '--------------------',
+    'Report saved with coach.',
     'See you at check-in!'
-  ].join('
-');
+  ];
+  const qrText = lines.join('\n');
 
   const container = document.getElementById('qr-canvas');
   container.innerHTML = '';
