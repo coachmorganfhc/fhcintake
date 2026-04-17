@@ -866,7 +866,7 @@ body{font-family:'Outfit',sans-serif;background:var(--g1);color:var(--text);min-
     <div class="qr-modal-sub">Hand the screen to <strong id="qr-member-name">your member</strong> or ask them to scan with their phone camera.</div>
     <div class="qr-box"><canvas id="qr-canvas"></canvas></div>
     <div class="qr-instruction">
-      <p><strong>Point your phone camera at the QR code.</strong><br>Your full assessment profile will open instantly — no app needed.</p>
+      <p><strong>Point your phone camera at the QR code.</strong><br>Your assessment summary will display instantly — save it to your camera roll or notes.</p>
     </div>
     <button class="qr-close" onclick="document.getElementById('qr-overlay').classList.remove('open')">Close</button>
   </div>
@@ -1386,10 +1386,15 @@ async function sendSlack(name, loc, goals, exp, learn, pct, asyms, pains, corrGr
 
   try {
     showSlackStatus('Sending to Slack...','sending');
-    await fetch(url, {method:'POST',body:JSON.stringify(payload)});
-    showSlackStatus('✓ Slack notification sent successfully.','sent');
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    showSlackStatus('✓ Sent to Slack.','sent');
   } catch(e) {
-    showSlackStatus('Slack notification failed — check your webhook URL.','err');
+    showSlackStatus('Slack send failed — check webhook URL.','err');
   }
 }
 
@@ -1411,16 +1416,17 @@ document.addEventListener('DOMContentLoaded', () => {
 // GOOGLE SHEETS SAVE
 // ══════════════════════════
 async function saveToSheets(data) {
-  const url = localStorage.getItem('fhc-sheets-url');
-  if (!url) return;
+  const baseUrl = localStorage.getItem('fhc-sheets-url');
+  if (!baseUrl) { console.warn('No Sheets URL saved'); return; }
   try {
-    await fetch(url, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(data)
-    });
-    console.log('Saved to Google Sheets');
+    // Build URL with all params - GET avoids CORS issues with Apps Script
+    const params = new URLSearchParams();
+    Object.keys(data).forEach(k => params.append(k, String(data[k]||'')));
+    const url = baseUrl + '?' + params.toString();
+    // Use no-cors image trick - reliable cross-origin GET from browser
+    const img = new Image();
+    img.src = url;
+    console.log('Sheets save triggered');
   } catch(e) {
     console.warn('Google Sheets save failed:', e);
   }
@@ -1453,22 +1459,40 @@ function showQR() {
   const name = document.getElementById('o-name').textContent || 'Member';
   document.getElementById('qr-member-name').textContent = name;
 
-  const memberHTML = buildMemberHTML();
-  const encoded = encodeURIComponent(memberHTML);
-  const dataURL = 'data:text/html;charset=utf-8,' + encoded;
+  // Store full report HTML in sessionStorage then QR points to /report page
+  // Since we're on GitHub Pages, encode a compact summary URL instead
+  // The QR opens the portal at a special #report hash with member name param
+  const reportData = {
+    n: name,
+    loc: document.getElementById('o-loc').textContent,
+    goals: document.getElementById('o-goals').textContent.substring(0,120),
+    learn: document.getElementById('o-learn-title').textContent,
+    checkin: document.getElementById('o-ci-date').textContent
+  };
 
-  const canvas = document.getElementById('qr-canvas');
-  canvas.innerHTML = '';
-  canvas.width = 188;
-  canvas.height = 188;
-
-  if (qrInstance) { try { qrInstance.clear(); } catch(e){} }
+  // Build a simple vCard-style text QR that shows key info on phone
+  const qrText = [
+    'FUNCTION HEALTH CLUB',
+    'Member Assessment Summary',
+    '─────────────────────',
+    'Name: ' + reportData.n,
+    'Location: ' + reportData.loc,
+    'Goal: ' + reportData.goals,
+    'Coaching Style: ' + reportData.learn,
+    '30-Day Check-In: ' + reportData.checkin,
+    '─────────────────────',
+    'Full report saved with your coach.',
+    'See you at check-in!'
+  ].join('
+');
 
   const container = document.getElementById('qr-canvas');
   container.innerHTML = '';
 
+  if (qrInstance) { try { qrInstance.clear(); } catch(e){} }
+
   qrInstance = new QRCode(container, {
-    text: dataURL,
+    text: qrText,
     width: 188,
     height: 188,
     colorDark: '#0F2318',
