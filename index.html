@@ -864,7 +864,7 @@ body{font-family:'Outfit',sans-serif;background:var(--g1);color:var(--text);min-
   <div class="qr-modal">
     <div class="qr-modal-title">Member Report Ready</div>
     <div class="qr-modal-sub">Hand the screen to <strong id="qr-member-name">your member</strong> or ask them to scan with their phone camera.</div>
-    <div class="qr-box"><canvas id="qr-canvas"></canvas></div>
+    <div class="qr-box"><div id="qr-canvas"></div></div>
     <div class="qr-instruction">
       <p><strong>Point your phone camera at the QR code.</strong><br>Your assessment summary will display instantly — save it to your camera roll or notes.</p>
     </div>
@@ -1283,8 +1283,10 @@ function generate() {
     : '<div style="color:var(--text-c);font-size:13px;">Your coach will confirm your pathway at your first session.</div>';
 
   // Check-in
-  document.getElementById('o-ci-date').textContent = fmtDate(checkinStr);
-  const days = daysTo(checkinStr);
+  const fmtCheckin = checkinStr ? fmtDate(checkinStr) : '—';
+  const days = checkinStr ? daysTo(checkinStr) : null;
+  document.getElementById('o-ci-date').textContent = fmtCheckin;
+  document.getElementById('o-checkin-pill').textContent = fmtCheckin;
   document.getElementById('o-ci-days').textContent = days!==null?days:'—';
 
   // Switch screens
@@ -1460,40 +1462,39 @@ function showQR() {
   document.getElementById('qr-member-name').textContent = name;
 
   const loc = document.getElementById('o-loc').textContent || '';
-  const goals = (document.getElementById('o-goals').textContent || '').substring(0, 100);
+  const goals = (document.getElementById('o-goals').textContent || '').substring(0, 80);
   const learn = document.getElementById('o-learn-title').textContent || '';
   const checkin = document.getElementById('o-ci-date').textContent || '';
 
-  const lines = [
-    'FUNCTION HEALTH CLUB',
-    'Assessment Summary',
-    '--------------------',
-    'Name: ' + name,
-    'Location: ' + loc,
-    'Goal: ' + goals,
-    'Coaching: ' + learn,
-    'Check-In: ' + checkin,
-    '--------------------',
-    'Report saved with coach.',
-    'See you at check-in!'
-  ];
-  const qrText = lines.join('\n');
+  const qrText = 'FUNCTION HEALTH CLUB\n'
+    + 'Assessment Summary\n'
+    + '--------------------\n'
+    + 'Name: ' + name + '\n'
+    + 'Location: ' + loc + '\n'
+    + 'Goal: ' + goals + '\n'
+    + 'Coaching: ' + learn + '\n'
+    + 'Check-In: ' + checkin + '\n'
+    + '--------------------\n'
+    + 'Report saved with your coach.';
 
   const container = document.getElementById('qr-canvas');
   container.innerHTML = '';
 
   if (qrInstance) { try { qrInstance.clear(); } catch(e){} }
 
-  qrInstance = new QRCode(container, {
-    text: qrText,
-    width: 188,
-    height: 188,
-    colorDark: '#0F2318',
-    colorLight: '#FFFFFF',
-    correctLevel: QRCode.CorrectLevel.L
-  });
-
-  document.getElementById('qr-overlay').classList.add('open');
+  try {
+    qrInstance = new QRCode(container, {
+      text: qrText,
+      width: 180,
+      height: 180,
+      colorDark: '#162C1E',
+      colorLight: '#FFFFFF',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    document.getElementById('qr-overlay').classList.add('open');
+  } catch(err) {
+    alert('QR generation failed: ' + err.message);
+  }
 }
 
 function closeQR(e) {
